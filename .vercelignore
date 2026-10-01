@@ -1,0 +1,5 @@
+.env*
+tests/
+test-results/
+README.md
+dev.mjs

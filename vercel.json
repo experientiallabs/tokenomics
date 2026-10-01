@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "empty-public",
+  "functions": { "api/index.mjs": { "includeFiles": "{private/**,node_modules/d3/dist/d3.min.js}", "maxDuration": 30 } },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+}

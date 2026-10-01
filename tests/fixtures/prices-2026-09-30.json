@@ -1,0 +1,206 @@
+{
+  "retrievedAt": "2026-10-01T02:37:42.752Z",
+  "rows": [
+    {
+      "model": "deepseek/deepseek-v4-pro-0813",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-pro-0813/endpoints",
+      "endpoints": [
+        {
+          "provider": "StreamLake",
+          "tag": "streamlake",
+          "status": 0,
+          "contextLength": 1024000,
+          "pricing": {
+            "prompt": "0.00000066",
+            "completion": "0.00000198",
+            "input_cache_read": "0.000000022",
+            "discount": 0.5
+          }
+        },
+        {
+          "provider": "DeepSeek",
+          "tag": "deepseek",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.00000132",
+            "completion": "0.00000396",
+            "input_cache_read": "0.000000044",
+            "discount": 0,
+            "overrides": [
+              {
+                "utc_days": [
+                  "saturday",
+                  "sunday"
+                ],
+                "prompt": "0.00000066",
+                "completion": "0.00000198",
+                "input_cache_read": "0.000000022"
+              },
+              {
+                "utc_start": 0,
+                "utc_end": 100,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000066",
+                "completion": "0.00000198",
+                "input_cache_read": "0.000000022"
+              },
+              {
+                "utc_start": 100,
+                "utc_end": 400,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000132",
+                "completion": "0.00000396",
+                "input_cache_read": "0.000000044"
+              },
+              {
+                "utc_start": 400,
+                "utc_end": 600,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000066",
+                "completion": "0.00000198",
+                "input_cache_read": "0.000000022"
+              },
+              {
+                "utc_start": 600,
+                "utc_end": 1000,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000132",
+                "completion": "0.00000396",
+                "input_cache_read": "0.000000044"
+              },
+              {
+                "utc_start": 1000,
+                "utc_end": 0,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000066",
+                "completion": "0.00000198",
+                "input_cache_read": "0.000000022"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "model": "z-ai/glm-5.2",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.2/endpoints",
+      "endpoints": [
+        {
+          "provider": "Baidu",
+          "tag": "baidu/fast",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.00000029925",
+            "completion": "0.00000104804",
+            "input_cache_read": "0.00000007448",
+            "discount": 0.867
+          }
+        },
+        {
+          "provider": "Z.AI",
+          "tag": "z-ai/fp8",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model": "z-ai/glm-5.3",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3/endpoints",
+      "endpoints": [
+        {
+          "provider": "AtlasCloud",
+          "tag": "atlas-cloud/fp8",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.000000602",
+            "completion": "0.000001892",
+            "input_cache_read": "0.0000001118",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Z.AI",
+          "tag": "z-ai/fp8",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model": "moonshotai/kimi-k3",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k3/endpoints",
+      "endpoints": [
+        {
+          "provider": "Relace",
+          "tag": "relace/fp4",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.00000028",
+            "completion": "0.00001",
+            "input_cache_read": "0.00000028",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Moonshot AI",
+          "tag": "moonshotai/mxfp4",
+          "status": 0,
+          "contextLength": 1048576,
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        }
+      ]
+    }
+  ]
+}

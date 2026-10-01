@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Explore GPU inference profitability across model benchmarks, utilization and token prices."><title>Tokenomics · Experiential Labs</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/app.css">
+  <script src="/d3.min.js" defer></script><script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Tokenomics <span>Experiential Labs</span></a>
+  </header>
+  <main>
+    <div id="load-error" role="alert" hidden></div>
+    <section id="workspace" hidden>
+      <div class="heading">
+        <div><h1 id="chart-title">B300 profitability</h1><p id="rental-summary"></p></div>
+        <label class="model-picker"><span class="sr-only">Model</span><select id="model"></select></label>
+      </div>
+      <div class="chart-toolbar">
+        <p id="capacity-label"></p>
+        <div class="period-switch" role="group" aria-label="Profit period"><button data-months="1" aria-pressed="true">Monthly</button><button data-months="6" aria-pressed="false">6 months</button></div>
+      </div>
+      <div class="plot-wrap">
+        <div id="heatmap"></div>
+        <div id="chart-tooltip" class="tooltip" role="tooltip" hidden></div>
+      </div>
+      <div id="references" class="references" aria-label="Blended price references"></div>
+      <div id="color-legend"></div>
+      <div class="chart-notes"><span>Fixed benchmark mix · Before other operating costs</span><span id="interaction-hint">Hover to inspect · Click to pin</span></div>
+      <p id="selection" class="sr-only" aria-live="polite"></p>
+      <details class="sources">
+        <summary>Assumptions & sources</summary>
+        <div class="source-content"><p id="source-summary"></p><p id="assumption-notes"></p><div id="source-links"></div><p id="snapshot-label"></p></div>
+      </details>
+    </section>
+  </main>
+</body>
+</html>
