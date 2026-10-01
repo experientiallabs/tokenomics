@@ -3,10 +3,28 @@ import assert from 'node:assert/strict';
 import handler from '../api/index.mjs';
 import { economics, profitAt } from '../private/economics.mjs';
 import { models } from '../lib/models.mjs';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, cp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const call=async(path,headers={},method='GET')=>{const res={statusCode:200,headers:{},setHeader(k,v){this.headers[k.toLowerCase()]=v;},end(body){this.body=body;}};await handler({url:path,headers,method},res);return res;};
+const call=async(path,headers={},method='GET',serve=handler)=>{const res={statusCode:200,headers:{},setHeader(k,v){this.headers[k.toLowerCase()]=v;},end(body){this.body=body;}};await serve({url:path,headers,method},res);return res;};
 const publicPaths=['/','/api/models','/app.css','/app.mjs','/economics.mjs','/d3.min.js','/health','/robots.txt','/favicon.svg'];
+
+test('standalone deployment works with only the bundled D3 asset, without its Node package entrypoint',async()=>{
+  const bundle=await mkdtemp(join(tmpdir(),'tokenomics-bundle-test-'));
+  try{
+    for(const dir of ['api','lib','private','node_modules/d3/dist']) await mkdir(join(bundle,dir),{recursive:true});
+    for(const file of ['api/index.mjs','lib/models.mjs','private/index.html','private/app.mjs','private/app.css','private/economics.mjs','node_modules/d3/dist/d3.min.js']) {
+      await cp(new URL('../'+file,import.meta.url),join(bundle,file));
+    }
+    const {default:serve}=await import(pathToFileURL(join(bundle,'api/index.mjs')));
+    for(const path of publicPaths) assert.equal((await call(path,{},'GET',serve)).statusCode,200,path);
+    assert.match(String((await call('/d3.min.js',{},'GET',serve)).body),/d3js.org/);
+  } finally {
+    await rm(bundle,{recursive:true,force:true});
+  }
+});
 
 test('every dashboard asset and model endpoint works without authentication configuration',async()=>{
   for(const key of ['SESSION_SECRET','GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','APP_ORIGIN']) delete process.env[key];

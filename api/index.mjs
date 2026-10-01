@@ -1,15 +1,13 @@
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { models } from '../lib/models.mjs';
 
-const require = createRequire(import.meta.url);
 // Serve only these public assets, never arbitrary paths or local configuration.
 const assets = new Map([
   ['/', ['text/html; charset=utf-8', new URL('../private/index.html', import.meta.url)]],
   ['/app.css', ['text/css; charset=utf-8', new URL('../private/app.css', import.meta.url)]],
   ['/app.mjs', ['text/javascript; charset=utf-8', new URL('../private/app.mjs', import.meta.url)]],
   ['/economics.mjs', ['text/javascript; charset=utf-8', new URL('../private/economics.mjs', import.meta.url)]],
-  ['/d3.min.js', ['text/javascript; charset=utf-8', new URL('../dist/d3.min.js', `file://${require.resolve('d3')}`)]],
+  ['/d3.min.js', ['text/javascript; charset=utf-8', new URL('../node_modules/d3/dist/d3.min.js', import.meta.url)]],
 ]);
 const legacySignInPaths = new Set(['/signin', '/auth/google', '/auth/callback', '/auth/signout']);
 
