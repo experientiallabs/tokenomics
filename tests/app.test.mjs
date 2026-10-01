@@ -9,13 +9,13 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const call=async(path,headers={},method='GET',serve=handler)=>{const res={statusCode:200,headers:{},setHeader(k,v){this.headers[k.toLowerCase()]=v;},end(body){this.body=body;}};await serve({url:path,headers,method},res);return res;};
-const publicPaths=['/','/api/models','/app.css','/app.mjs','/economics.mjs','/d3.min.js','/health','/robots.txt','/favicon.svg'];
+const publicPaths=['/','/explorer','/explorer.css','/explorer.mjs','/tokenomics.mjs','/default-scenario.json','/api/scenario','/api/models','/app.css','/app.mjs','/economics.mjs','/d3.min.js','/health','/robots.txt','/favicon.svg'];
 
 test('standalone deployment works with only the bundled D3 asset, without its Node package entrypoint',async()=>{
   const bundle=await mkdtemp(join(tmpdir(),'tokenomics-bundle-test-'));
   try{
     for(const dir of ['api','lib','private','node_modules/d3/dist']) await mkdir(join(bundle,dir),{recursive:true});
-    for(const file of ['api/index.mjs','lib/models.mjs','private/index.html','private/app.mjs','private/app.css','private/economics.mjs','node_modules/d3/dist/d3.min.js']) {
+    for(const file of ['api/index.mjs','lib/models.mjs','lib/catalog.mjs','private/tokenomics.mjs','private/default-scenario.json','private/explorer.html','private/explorer.mjs','private/explorer.css','private/index.html','private/app.mjs','private/app.css','private/economics.mjs','node_modules/d3/dist/d3.min.js']) {
       await cp(new URL('../'+file,import.meta.url),join(bundle,file));
     }
     const {default:serve}=await import(pathToFileURL(join(bundle,'api/index.mjs')));

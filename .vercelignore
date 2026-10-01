@@ -3,3 +3,5 @@ tests/
 test-results/
 README.md
 dev.mjs
+report.mjs
+scenarios/
