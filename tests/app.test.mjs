@@ -115,6 +115,17 @@ test('chart-first dashboard keeps tooltip and removes the settings and extra tab
   assert.match(page,/<details class="sources">/);
   assert.doesNotMatch(page,/<input\b|<table\b|class="controls"/);
 });
+test('SemiAnalysis benchmark attribution is linked above the chart, outside collapsed sources',async()=>{
+  const page=String((await call('/')).body);
+  const credit=page.match(/<p class="benchmark-credit">[\s\S]*?<\/p>/);
+  assert(credit);
+  assert(credit.index<page.indexOf('id="heatmap"'));
+  assert(credit.index<page.indexOf('<details'));
+  assert.match(credit[0],/href="https:\/\/inferencex\.semianalysis\.com\/agentx"[^>]*>SemiAnalysis AgentX<\/a>/);
+  assert.match(credit[0],/href="https:\/\/github\.com\/SemiAnalysisAI\/InferenceX"[^>]*>InferenceX<\/a>/);
+  assert.match(credit[0],/Profitability model: Experiential Labs/);
+  assert.doesNotMatch(credit[0],/\bhidden\b|sr-only/);
+});
 test('inspected chart point uses both coordinates and scales the period without changing break-even',()=>{
   const m=models[0],s={...m,gpus:8,hourlyRate:5.5,hours:730,utilization:1,otherMonthlyCost:0,inputPrice:.15,cachedPrice:.003,outputPrice:.6,feeRate:0};
   const e=economics(s),u=.75,p=.02;

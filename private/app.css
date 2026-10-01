@@ -31,6 +31,8 @@ main { max-width: 1120px; padding: 26px 24px 20px; margin: 0 auto; }
 .heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 h1 { font-size: 23px; font-weight: 600; letter-spacing: -.65px; }
 #rental-summary { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.benchmark-credit { margin-top: 10px; color: var(--muted); font-size: 12px; }
+.benchmark-credit a { color: var(--ink); font-weight: 500; text-underline-offset: 3px; }
 select { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 30px 8px 10px; max-width: 270px; font-size: 12px; }
 .chart-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-top: 15px; font-size: 12px; color: var(--muted); }
 .period-switch { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; flex-shrink: 0; }

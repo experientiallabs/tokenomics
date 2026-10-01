@@ -25,7 +25,7 @@ function useModel(m) {
   $('capacity-label').textContent = `${m.estimateFrom ? 'Estimated ' : ''}100% = ${capacity} total tokens/sec · ${scenario.hours} hours/month`;
   $('source-summary').textContent = `${m.name} · ${m.engine} · ${m.workload}. Target: at least ${m.interactivity} output tokens/sec per user (p90). ${scenario.gpus} GPUs at $${scenario.hourlyRate.toFixed(2)}/GPU-hour. Input cache hit rate: ${(m.cacheHitRate * 100).toFixed(1)}%. Total throughput includes cached input; generation alone is ${(m.outputTpsPerGpu * scenario.gpus).toLocaleString('en-US', { maximumFractionDigits: 0 })} tokens/sec across the server.`;
   $('assumption-notes').textContent = m.assumptions;
-  const sources = [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['AgentX methodology', m.methodology],
+  const sources = [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['SemiAnalysis AgentX methodology', m.methodology],
     ...m.prices.filter(p => p.source).map(p => [p.source.includes('openrouter.ai') ? 'OpenRouter prices' : `${p.name} prices`, p.source]), ...(m.extraSources || [])];
   $('source-links').replaceChildren(...sources.filter((source, i) => sources.findIndex(other => other[1] === source[1]) === i).map(([label, url]) => {
     const a = document.createElement('a'); a.textContent = label; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
