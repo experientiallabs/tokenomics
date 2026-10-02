@@ -6,7 +6,7 @@ const compact = v => (v < 0 ? '-' : '') + '$' + d3.format('.2~s')(Math.abs(v)).r
 const pct = v => v === null ? 'never' : (v * 100).toFixed(1) + '%';
 const perM = v => '$' + v.toFixed(v < 1 ? 3 : 2) + '/M';
 const catalogs = new Map();
-let defaults, report, selected, sortKey = 'best', sortDir = -1;
+let defaults, report, selected, lastPatch = {}, sortKey = 'best', sortDir = -1;
 
 // The URL hash carries the scenario patch, so a link reproduces a view exactly.
 const encode = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -33,6 +33,7 @@ async function run() {
     report = buildReport(catalog.models, scenario, { curves: true });
     $('status').textContent = Object.entries(catalog.sources).map(([s, v]) => v.ok ? `${s}: ${v.models} priced models` : `${s}: unavailable`).join(' · ')
       + ` · ${report.models.length} included · ${report.scenario.fleet.gpuCount} GPUs at ${pct(report.scenario.fleet.utilization)} utilization`;
+    lastPatch = patch;
     history.replaceState(null, '', '#s=' + encode(patch));
   } catch (error) { $('scenario-error').textContent = error.message; return; }
   const ids = report.models.map(m => m.id);
@@ -127,6 +128,11 @@ function drawModel() {
   const m = report.models.find(v => v.id === selected); if (!m) return;
   const r = m.results[0];
   $('model-summary').textContent = `${m.source} · ${m.vendor} · lane ${r.lane} · input ${perM(r.prices.input)}, cached ${perM(r.prices.cached)}, output ${perM(r.prices.output)} · dots mark each GPU's scenario price and utilization`;
+  const label = document.createElement('span'); label.className = 'muted'; label.textContent = 'Open in the benchmark heatmap:';
+  $('heatmap-links').replaceChildren(label, ...m.results.map((result, i) => {
+    const a = document.createElement('a'); const gpu = report.scenario.gpus[i];
+    a.href = `/?${new URLSearchParams({ catalog: m.id, gpu: gpu.id })}#s=${encode(lastPatch)}`; a.textContent = gpu.name; return a;
+  }));
   drawCurve($('by-rate'), report.axes.hourlyRate, 'profitByHourlyRate', v => '$' + v.toFixed(2), '$ per GPU-hour', r => r.hourlyRate);
   drawCurve($('by-util'), report.axes.utilization, 'profitByUtilization', d3.format('.0%'), 'Paid utilization', () => report.scenario.fleet.utilization);
 }

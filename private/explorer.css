@@ -30,3 +30,5 @@ tr[data-id] { cursor: pointer; }
 tr[data-id]:hover { background: color-mix(in srgb, var(--line) 40%, transparent); }
 .tooltip { width: auto; min-width: 180px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .editor { position: static; } textarea { height: 40dvh; } }
+.links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.links a { text-underline-offset: 3px; }

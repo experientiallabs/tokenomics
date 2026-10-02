@@ -167,3 +167,30 @@ test('catalog loader fetches only fixed URLs and reports a failed source without
   assert.equal(seen.length, 3, 'second load is served from the cache');
   clearCatalogCache();
 });
+
+test('heatmap model endpoint shapes one catalog model on one GPU like a benchmark entry', async () => {
+  const patch = { gpus: { b300: { hourlyRate: 4 } }, models: { 'kimi-k3': { output: 9 } } };
+  const res = await call('/api/heatmap-model?' + new URLSearchParams({ id: 'experiential:kimi-k3', gpu: 'b300', scenario: JSON.stringify(patch) }));
+  assert.equal(res.statusCode, 200);
+  const { model } = JSON.parse(res.body);
+  assert.equal(model.hardware, 'B300');
+  assert.equal(model.defaultHourlyRate, 4);
+  assert.equal(model.defaultGpuCount, defaults.fleet.gpuCount);
+  assert.equal(model.inputTpsPerGpu, defaults.workload.inputTpsPerGpu * 1.0);
+  assert.equal(model.capacityKind, 'generic');
+  assert.deepEqual(model.prices.map(p => p.name), ['Scenario price', 'experiential · experiential_cloud', 'experiential · wafer']);
+  assert.equal(model.prices[0].output, 9);
+  assert.equal(model.prices[0].input, 3);
+  // Every field the original heatmap reads is present.
+  for (const key of ['id', 'name', 'engine', 'workload', 'cacheHitRate', 'outputTpsPerGpu', 'defaultHoursPerMonth', 'assumptions', 'sourceLinks', 'pricesAsOf']) assert.ok(model[key] !== undefined, key);
+  const plain = await call('/api/heatmap-model?id=experiential:kimi-k3&gpu=h100');
+  assert.equal(plain.statusCode, 200, 'a model with no override in the scenario');
+  assert.deepEqual(JSON.parse(plain.body).model.prices.map(p => p.name), ['experiential · experiential_cloud', 'experiential · wafer']);
+  const pinned = JSON.parse((await call('/api/heatmap-model?' + new URLSearchParams({ id: 'experiential:kimi-k3', gpu: 'b300',
+    scenario: JSON.stringify({ models: { 'kimi-k3': { gpus: { b300: { inputTpsPerGpu: 6000, outputTpsPerGpu: 50 } } } } }) }))).body).model;
+  assert.equal(pinned.capacityKind, 'measured');
+  assert.equal(pinned.outputTpsPerGpu, 50);
+  for (const query of ['id=nope:x&gpu=b300', 'id=experiential:missing&gpu=b300', 'id=experiential:kimi-k3&gpu=tpu', 'id=experiential:kimi-k3&gpu=b300&scenario=%7B']) {
+    assert.equal((await call('/api/heatmap-model?' + query)).statusCode, 400, query);
+  }
+});

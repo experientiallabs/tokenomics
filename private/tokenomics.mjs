@@ -163,6 +163,28 @@ function pickPrices(model, override, lane, inputShare, cacheHitRate) {
 
 const steps = ({ from, to, steps }) => Array.from({ length: steps + 1 }, (_, i) => from + (to - from) * i / steps);
 
+// Overrides key on "source:slug" or the bare slug; an unnamed model gets an empty override.
+const overrideFor = (s, model) => s.models[`${model.source}:${model.slug}`] || s.models[model.slug] || null;
+
+function included(s, model, override) {
+  if (!s.catalog.sources.includes(model.source)) return false;
+  if (override) return true;
+  const id = `${model.source}:${model.slug}`, listed = list => matchesAny(model.slug, list) || matchesAny(id, list);
+  return !(s.catalog.openWeightsOnly && model.openWeights === false) && (listed(s.catalog.include) || !listed(s.catalog.exclude));
+}
+
+/** Per-GPU capacity: a per-model-per-GPU pin wins, else (model or workload default) x GPU x model multipliers. */
+function capacityFor(s, override, gpu) {
+  const o = override || {}, pinned = o.gpus?.[gpu.id] || {};
+  const scale = gpu.throughput * (pinned.throughput ?? o.throughput ?? 1);
+  const inputTpsPerGpu = pinned.inputTpsPerGpu ?? (o.inputTpsPerGpu ?? s.workload.inputTpsPerGpu) * scale;
+  const outputTpsPerGpu = pinned.outputTpsPerGpu ?? (o.outputTpsPerGpu ?? s.workload.outputTpsPerGpu) * scale;
+  const cacheHitRate = pinned.cacheHitRate ?? o.cacheHitRate ?? s.workload.cacheHitRate;
+  const total = inputTpsPerGpu + outputTpsPerGpu;
+  return { inputTpsPerGpu, outputTpsPerGpu, cacheHitRate, inputShare: total > 0 ? inputTpsPerGpu / total : 0,
+    measured: Boolean(pinned.inputTpsPerGpu ?? pinned.outputTpsPerGpu) };
+}
+
 /**
  * Computes every included catalog model on every GPU.
  *
@@ -175,21 +197,12 @@ export function buildReport(catalog, scenario, { curves = false } = {}) {
   const rates = steps(s.sweep.hourlyRate), utils = steps(s.sweep.utilization);
   const models = [];
   for (const model of catalog) {
-    if (!s.catalog.sources.includes(model.source)) continue;
-    // Overrides key on "source:slug" or the bare slug; patterns match either spelling too.
-    const id = `${model.source}:${model.slug}`, named = s.models[id] || s.models[model.slug];
-    const override = named || { gpus: {} };
-    const listed = list => matchesAny(model.slug, list) || matchesAny(id, list);
-    if (!named && (s.catalog.openWeightsOnly && model.openWeights === false || !listed(s.catalog.include) && listed(s.catalog.exclude))) continue;
+    const id = `${model.source}:${model.slug}`, override = overrideFor(s, model);
+    if (!included(s, model, override)) continue;
     const results = s.gpus.map(gpu => {
-      const pinned = override.gpus[gpu.id] || {};
-      const scale = gpu.throughput * (pinned.throughput ?? override.throughput ?? 1);
-      const inputTpsPerGpu = pinned.inputTpsPerGpu ?? (override.inputTpsPerGpu ?? s.workload.inputTpsPerGpu) * scale;
-      const outputTpsPerGpu = pinned.outputTpsPerGpu ?? (override.outputTpsPerGpu ?? s.workload.outputTpsPerGpu) * scale;
-      const cacheHitRate = pinned.cacheHitRate ?? override.cacheHitRate ?? s.workload.cacheHitRate;
-      const total = inputTpsPerGpu + outputTpsPerGpu, inputShare = total > 0 ? inputTpsPerGpu / total : 0;
-      const prices = pickPrices(model, override, s.catalog.lane, inputShare, cacheHitRate);
-      const base = { gpus: override.gpuCount ?? s.fleet.gpuCount, hourlyRate: gpu.hourlyRate, hours: s.fleet.hoursPerMonth,
+      const { inputTpsPerGpu, outputTpsPerGpu, cacheHitRate, inputShare } = capacityFor(s, override, gpu);
+      const prices = pickPrices(model, override || {}, s.catalog.lane, inputShare, cacheHitRate);
+      const base = { gpus: override?.gpuCount ?? s.fleet.gpuCount, hourlyRate: gpu.hourlyRate, hours: s.fleet.hoursPerMonth,
         utilization: s.fleet.utilization, otherMonthlyCost: s.fleet.otherMonthlyCost, feeRate: s.fleet.feeRate,
         inputPrice: prices.input, cachedPrice: prices.cached, outputPrice: prices.output, inputTpsPerGpu, outputTpsPerGpu, cacheHitRate };
       const e = economics(base);
@@ -219,6 +232,37 @@ export function buildReport(catalog, scenario, { curves = false } = {}) {
       top: best.slice(0, 10).map(({ m, r }) => ({ id: m.id, gpu: r.gpu, profit: r.profit, breakEvenUtilization: r.breakEvenUtilization })),
     },
     models,
+  };
+}
+
+/**
+ * One catalog model on one GPU in the shape the benchmark heatmap (lib/models.mjs) reads,
+ * so the original dashboard can draw any catalog model unchanged. Price references are the
+ * scenario's price (when overridden) followed by the model's catalog lanes.
+ */
+export function heatmapModel(catalog, scenario, id, gpuId) {
+  const s = validateScenario(scenario);
+  const model = catalog.find(m => `${m.source}:${m.slug}` === id);
+  if (!model) throw new ScenarioError(`no priced catalog model ${id} in sources ${s.catalog.sources.join(', ')}`);
+  const gpu = s.gpus.find(g => g.id === gpuId);
+  if (!gpu) throw new ScenarioError(`gpu ${gpuId} is not in the scenario`);
+  const override = overrideFor(s, model) || {};
+  const c = capacityFor(s, override, gpu);
+  const lanes = model.lanes.slice(0, 4).map((l, i) => ({ id: `lane-${i}`, name: `${model.source} · ${l.provider}`, input: l.input, cached: l.cached, output: l.output }));
+  const custom = ['input', 'cached', 'output'].some(k => override[k] !== undefined)
+    ? [{ id: 'scenario', name: 'Scenario price', ...Object.fromEntries(['input', 'cached', 'output'].map(k => [k, override[k] ?? model.lanes[0][k]])) }] : [];
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    id: `catalog:${id}:${gpu.id}`, name: model.name, hardware: gpu.name, engine: model.source,
+    workload: c.measured ? 'scenario-pinned throughput' : 'generic throughput', capacityKind: c.measured ? 'measured' : 'generic',
+    estimateFrom: c.measured ? undefined : 'generic throughput',
+    measuredAt: today, pricesAsOf: today,
+    inputTpsPerGpu: c.inputTpsPerGpu, outputTpsPerGpu: c.outputTpsPerGpu, cacheHitRate: c.cacheHitRate,
+    defaultGpuCount: override.gpuCount ?? s.fleet.gpuCount, defaultHourlyRate: gpu.hourlyRate, defaultHoursPerMonth: s.fleet.hoursPerMonth,
+    assumptions: `Catalog model ${id} on ${gpu.name} at $${gpu.hourlyRate}/GPU-hour with a ${gpu.throughput}x throughput multiplier. `
+      + (c.measured ? 'Throughput is pinned in the scenario. ' : 'Throughput is the scenario\'s generic placeholder, not a measurement. ')
+      + 'Price references are live catalog list prices. Other monthly costs and fees in the scenario are not drawn here; the explorer and report include them.',
+    prices: [...custom, ...lanes],
   };
 }
 

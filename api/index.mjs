@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { models } from '../lib/models.mjs';
-import { loadCatalog } from '../lib/catalog.mjs';
-import { buildReport, mergeScenario, reportToCsv, ScenarioError, SOURCES } from '../private/tokenomics.mjs';
+import { loadCatalog, SOURCE_URLS } from '../lib/catalog.mjs';
+import { buildReport, heatmapModel, mergeScenario, reportToCsv, ScenarioError, SOURCES } from '../private/tokenomics.mjs';
 
 const defaultScenarioUrl = new URL('../private/default-scenario.json', import.meta.url);
 export const defaultScenario = () => JSON.parse(readFileSync(defaultScenarioUrl, 'utf8'));
@@ -83,6 +83,25 @@ async function handle(req, res, catalogLoader) {
     if (!['GET', 'HEAD'].includes(req.method)) {
       res.setHeader('Allow', path === '/api/report' ? 'GET, HEAD, POST' : 'GET, HEAD');
       return send(405, 'Method not allowed');
+    }
+    if (path === '/api/heatmap-model') {
+      // One catalog model on one GPU, shaped like /api/models entries, for the original heatmap.
+      try {
+        let patch;
+        try { patch = JSON.parse(url.searchParams.get('scenario') || '{}'); } catch { throw new BadRequest('Scenario must be valid JSON.'); }
+        const scenario = mergeScenario(defaultScenario(), patch);
+        const id = url.searchParams.get('id') || '', gpu = url.searchParams.get('gpu') || '';
+        const source = id.split(':')[0];
+        if (!SOURCES.includes(source)) throw new BadRequest(`id must look like source:slug with a source of ${SOURCES.join(', ')}`);
+        const catalog = await catalogLoader([source]);
+        const model = heatmapModel(catalog.models, { ...scenario, catalog: { ...scenario.catalog, sources: [source] } }, id, gpu);
+        const query = encodeURIComponent(JSON.stringify(patch));
+        model.sourceLinks = [['Catalog API', SOURCE_URLS[source]], ['Report for this scenario', `/api/report?scenario=${query}`], ['Open in explorer', '/explorer']];
+        return send(200, JSON.stringify({ model }), 'application/json');
+      } catch (error) {
+        if (error instanceof BadRequest || error instanceof ScenarioError) return send(400, JSON.stringify({ error: error.message }), 'application/json');
+        throw error;
+      }
     }
     if (path === '/api/scenario') return send(200, JSON.stringify(defaultScenario()), 'application/json');
     if (path === '/api/catalog') {

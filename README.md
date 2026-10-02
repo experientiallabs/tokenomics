@@ -56,6 +56,8 @@ node report.mjs scenarios/measured-b300.json scenarios/cheap-hopper-busy.json --
 
 The explorer's JSON editor takes the same patch, and **Copy link** / **Copy API call** reproduce a view exactly.
 
+**Open in the benchmark heatmap** (under the selected model in the explorer) opens the original dashboard on that catalog model and GPU with the current scenario: `/?catalog=<source:slug>&gpu=<id>#s=<scenario>`. The heatmap is unchanged; the model is one extra picker entry served by `GET /api/heatmap-model?id=<source:slug>&gpu=<id>&scenario=<json>`, labelled as generic throughput unless the scenario pins measured numbers for that GPU.
+
 ## Run locally
 
 ```sh
