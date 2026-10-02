@@ -73,6 +73,12 @@ test('lane choice, GPU map patches and per-model per-GPU overrides change the re
   assert.equal(patched.gpus[0].hourlyRate, 1);
   assert.equal(patched.gpus[0].throughput, defaults.gpus[0].throughput);
 
+  // Chaining two scenarios that both pin per-model GPU numbers merges them (the CLI's left-to-right merge).
+  const pin = { models: { 'kimi-k3': { gpus: { b300: { inputTpsPerGpu: 6000 } } } } };
+  const chained = mergeScenario(mergeScenario(base, pin), { models: { 'kimi-k3': { gpus: { b300: { outputTpsPerGpu: 50 }, h100: { throughput: 2 } } } } });
+  assert.deepEqual(chained.models['kimi-k3'].gpus, { b300: { inputTpsPerGpu: 6000, outputTpsPerGpu: 50 }, h100: { throughput: 2 } });
+  assert.deepEqual(chained.gpus, base.gpus);
+
   const pinned = buildReport(catalog, mergeScenario(base, { models: { 'experiential:kimi-k3': { gpus: { b300: { inputTpsPerGpu: 6000, outputTpsPerGpu: 50 } }, output: 10 } } }))
     .models.find(m => m.slug === 'kimi-k3');
   const b300 = pinned.results.find(r => r.gpu === 'b300'), h100 = pinned.results.find(r => r.gpu === 'h100');

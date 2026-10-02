@@ -73,6 +73,11 @@ function tooltip(event, lines) {
 function drawRanked() {
   const { svg, f } = frame($('ranked'), 300);
   const gpus = report.scenario.gpus, n = report.models.length;
+  if (n === 0) {
+    svg.append('text').attr('x', (f.left + f.right) / 2).attr('y', f.height / 2).attr('text-anchor', 'middle').attr('fill', 'var(--muted)')
+      .text('No catalog models match this scenario. Check catalog.sources, include and exclude.');
+    return;
+  }
   const series = gpus.map((g, i) => report.models.map(m => ({ m, r: m.results[i] }))
     .sort((a, b) => (a.r.breakEvenUtilization ?? Infinity) - (b.r.breakEvenUtilization ?? Infinity)));
   const cap = 1.5;

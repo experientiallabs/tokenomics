@@ -8,18 +8,19 @@ const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 // Objects merge recursively and arrays replace, except `gpus`, which also accepts a
 // map keyed by GPU id so a caller can patch one price: {"gpus":{"h100":{"hourlyRate":1.5}}}.
-export function mergeScenario(base, patch) {
+// Only the top-level GPU list takes the map form; per-model `gpus` overrides are plain objects.
+export function mergeScenario(base, patch, top = true) {
   if (!isObject(patch)) return structuredClone(base);
   const out = structuredClone(base);
   for (const [key, value] of Object.entries(patch)) {
-    if (key === 'gpus' && isObject(value)) {
+    if (top && key === 'gpus' && isObject(value) && Array.isArray(out.gpus)) {
       const gpus = new Map(out.gpus.map(g => [g.id, g]));
       for (const [id, gpu] of Object.entries(value)) {
         if (gpu === null) gpus.delete(id);
         else gpus.set(id, { ...(gpus.get(id) || { id, name: id }), ...gpu, id });
       }
       out.gpus = [...gpus.values()];
-    } else if (isObject(value) && isObject(out[key])) out[key] = mergeScenario(out[key], value);
+    } else if (isObject(value) && isObject(out[key])) out[key] = mergeScenario(out[key], value, false);
     else out[key] = structuredClone(value);
   }
   return out;
