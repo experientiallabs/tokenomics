@@ -9,6 +9,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/">Tokenomics <span>Experiential Labs</span></a>
+    <nav class="nav"><a href="/" aria-current="page">Benchmarks</a><a href="/explorer">Explorer</a></nav>
   </header>
   <main>
     <div id="load-error" role="alert" hidden></div>
@@ -18,6 +19,7 @@
         <label class="model-picker"><span class="sr-only">Model</span><select id="model"></select></label>
       </div>
       <p class="benchmark-credit">Benchmarks: <a href="https://inferencex.semianalysis.com/agentx" target="_blank" rel="noopener noreferrer">SemiAnalysis AgentX</a> / <a href="https://github.com/SemiAnalysisAI/InferenceX" target="_blank" rel="noopener noreferrer">InferenceX</a> <span>· Profitability model: Experiential Labs</span></p>
+      <p id="catalog-credit" class="benchmark-credit" hidden>Catalog model with generic throughput, not a benchmark · Prices: live catalog · <a href="/explorer">Explorer</a></p>
       <div class="chart-toolbar">
         <p id="capacity-label"></p>
         <div class="period-switch" role="group" aria-label="Profit period"><button data-months="1" aria-pressed="true">Monthly</button><button data-months="6" aria-pressed="false">6 months</button></div>

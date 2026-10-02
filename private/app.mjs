@@ -23,14 +23,16 @@ function useModel(m) {
   const tps = economics(scenario).totalTps;
   const capacity = tps >= 1e6 ? `${(tps / 1e6).toFixed(3)}M` : `${(tps / 1000).toFixed(1)}k`;
   $('capacity-label').textContent = `${m.estimateFrom ? 'Estimated ' : ''}100% = ${capacity} total tokens/sec · ${scenario.hours} hours/month`;
-  $('source-summary').textContent = `${m.name} · ${m.engine} · ${m.workload}. Target: at least ${m.interactivity} output tokens/sec per user (p90). ${scenario.gpus} GPUs at $${scenario.hourlyRate.toFixed(2)}/GPU-hour. Input cache hit rate: ${(m.cacheHitRate * 100).toFixed(1)}%. Total throughput includes cached input; generation alone is ${(m.outputTpsPerGpu * scenario.gpus).toLocaleString('en-US', { maximumFractionDigits: 0 })} tokens/sec across the server.`;
+  $('source-summary').textContent = `${m.name} · ${m.engine} · ${m.workload}. ${m.interactivity ? `Target: at least ${m.interactivity} output tokens/sec per user (p90). ` : ''}${scenario.gpus} GPUs at $${scenario.hourlyRate.toFixed(2)}/GPU-hour. Input cache hit rate: ${(m.cacheHitRate * 100).toFixed(1)}%. Total throughput includes cached input; generation alone is ${(m.outputTpsPerGpu * scenario.gpus).toLocaleString('en-US', { maximumFractionDigits: 0 })} tokens/sec across the server.`;
   $('assumption-notes').textContent = m.assumptions;
-  const sources = [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['SemiAnalysis AgentX methodology', m.methodology],
+  document.querySelector('.benchmark-credit:not(#catalog-credit)').hidden = m.capacityKind === 'generic';
+  $('catalog-credit').hidden = m.capacityKind !== 'generic';
+  const sources = m.sourceLinks || [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['SemiAnalysis AgentX methodology', m.methodology],
     ...m.prices.filter(p => p.source).map(p => [p.source.includes('openrouter.ai') ? 'OpenRouter prices' : `${p.name} prices`, p.source]), ...(m.extraSources || [])];
   $('source-links').replaceChildren(...sources.filter((source, i) => sources.findIndex(other => other[1] === source[1]) === i).map(([label, url]) => {
     const a = document.createElement('a'); a.textContent = label; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
   }));
-  $('snapshot-label').textContent = `Benchmark${m.estimateFrom ? ` (${m.estimateFrom})` : ''}: ${m.measuredAt} · Prices: ${m.pricesAsOf}. Reference prices are not guaranteed sales. Six months assumes steady prices, demand and workload mix.`;
+  $('snapshot-label').textContent = m.capacityKind === 'generic' ? `Generic throughput, not a benchmark · Prices: live catalog, ${m.pricesAsOf}. Reference prices are not guaranteed sales.` : `Benchmark${m.estimateFrom ? ` (${m.estimateFrom})` : ''}: ${m.measuredAt} · Prices: ${m.pricesAsOf}. Reference prices are not guaranteed sales. Six months assumes steady prices, demand and workload mix.`;
   $('references').replaceChildren(...references.map(ref => {
     const button = document.createElement('button'); button.type = 'button'; button.dataset.reference = ref.id; button.setAttribute('aria-pressed', 'true');
     const swatch = document.createElement('span'); swatch.className = 'reference-swatch'; swatch.style.background = ref.color;
@@ -167,10 +169,23 @@ function showPoint(value, announce = false) {
   if (announce) $('selection').textContent = `${point.textContent}. ${result.textContent} ${label.textContent.toLowerCase()}.`;
 }
 
+// Same base64url JSON encoding the explorer writes into its link hash.
+const decodeScenario = text => decodeURIComponent(escape(atob(text.replace(/-/g, '+').replace(/_/g, '/'))));
+
 async function boot() {
   const response = await fetch('/api/models', { cache: 'no-store' });
   if (!response.ok) throw new Error('Could not load the chart. Please reload and try again.');
   const data = await response.json(); models = data.models;
+  // /?catalog=<source:slug>&gpu=<id>#s=<scenario> adds one catalog model from the explorer to the picker.
+  const query = new URLSearchParams(location.search);
+  if (query.get('catalog')) {
+    const scenario = new URLSearchParams(location.hash.slice(1)).get('s');
+    const params = new URLSearchParams({ id: query.get('catalog'), gpu: query.get('gpu') || '' });
+    if (scenario) params.set('scenario', decodeScenario(scenario));
+    const extra = await fetch(`/api/heatmap-model?${params}`, { cache: 'no-store' });
+    if (!extra.ok) throw new Error((await extra.json().catch(() => ({}))).error || 'Could not load that catalog model.');
+    models = [(await extra.json()).model, ...models];
+  }
   $('model').replaceChildren(...models.map(m => new Option(`${m.name} · ${m.hardware}`, m.id)));
   $('model').closest('label').classList.toggle('multiple', models.length > 1);
   $('workspace').hidden = false; useModel(models[0]);

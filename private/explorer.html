@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Compare GPU inference profitability across every catalog model, GPU type and GPU price."><title>Explorer · Tokenomics</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/explorer.css">
+  <script src="/d3.min.js" defer></script><script type="module" src="/explorer.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Tokenomics <span>Experiential Labs</span></a>
+    <nav class="nav"><a href="/">Benchmarks</a><a href="/explorer" aria-current="page">Explorer</a></nav>
+  </header>
+  <main class="explorer">
+    <div class="heading"><div><h1>Catalog × GPU explorer</h1><p id="status" class="muted">Loading catalogs…</p></div></div>
+    <div id="load-error" role="alert" hidden></div>
+    <div class="layout">
+      <section class="editor">
+        <label for="scenario" class="label">Scenario JSON</label>
+        <textarea id="scenario" spellcheck="false" aria-describedby="scenario-error"></textarea>
+        <p id="scenario-error" class="negative" role="alert"></p>
+        <div class="actions">
+          <button id="run" class="primary" type="button">Run <kbd>⌘↵</kbd></button>
+          <button id="reset" type="button">Reset</button>
+          <button id="share" type="button">Copy link</button>
+          <button id="curl" type="button">Copy API call</button>
+          <button id="csv" type="button">CSV</button>
+        </div>
+        <p class="muted small">Generic throughput and GPU prices. Edit any value; <code>gpus</code> also accepts a map such as <code>{"h100":{"hourlyRate":1.5}}</code>. Per-model overrides go in <code>models</code> keyed by <code>source:slug</code>.</p>
+      </section>
+      <section class="charts">
+        <h2>Break-even utilization, every model</h2>
+        <p class="muted small">Each line is one GPU. Models are sorted per GPU from easiest to hardest to break even. Lower is better.</p>
+        <div id="ranked" class="chart"></div>
+        <div class="model-row">
+          <h2>One model across GPUs</h2>
+          <select id="model" aria-label="Model"></select>
+        </div>
+        <p id="model-summary" class="muted small"></p>
+        <p id="heatmap-links" class="links small"></p>
+        <div class="pair">
+          <div><h3>Monthly profit vs GPU price</h3><div id="by-rate" class="chart"></div></div>
+          <div><h3>Monthly profit vs utilization</h3><div id="by-util" class="chart"></div></div>
+        </div>
+        <div id="legend" class="legend"></div>
+        <div class="model-row"><h2>All models</h2><input id="filter" type="search" placeholder="Filter models" aria-label="Filter models"></div>
+        <div class="table-wrap"><table id="table"></table></div>
+      </section>
+    </div>
+    <div id="tip" class="tooltip" hidden></div>
+  </main>
+</body>
+</html>

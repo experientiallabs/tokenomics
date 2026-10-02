@@ -1,0 +1,91 @@
+{
+  "notes": "Generic planning assumptions. Every value can be overridden by POSTing a partial scenario to /api/report, by the CLI (node report.mjs my.json), or in the explorer's JSON editor.",
+  "catalog": {
+    "sources": [
+      "experiential",
+      "huggingface"
+    ],
+    "lane": "lead",
+    "openWeightsOnly": true,
+    "include": [
+      "gpt-oss-*",
+      "gemma-*"
+    ],
+    "exclude": [
+      "claude-*",
+      "gemini-*",
+      "grok-*",
+      "gpt-*",
+      "sonar*",
+      "o1*",
+      "o3*",
+      "o4*",
+      "nova-*",
+      "*-batch"
+    ],
+    "minBlendedPrice": 0
+  },
+  "workload": {
+    "inputTpsPerGpu": 20000,
+    "outputTpsPerGpu": 200,
+    "cacheHitRate": 0.85
+  },
+  "fleet": {
+    "gpuCount": 8,
+    "hoursPerMonth": 730,
+    "utilization": 0.5,
+    "otherMonthlyCost": 0,
+    "feeRate": 0
+  },
+  "gpus": [
+    {
+      "id": "h100",
+      "name": "H100",
+      "hourlyRate": 2.0,
+      "throughput": 0.35
+    },
+    {
+      "id": "h200",
+      "name": "H200",
+      "hourlyRate": 2.5,
+      "throughput": 0.5
+    },
+    {
+      "id": "b200",
+      "name": "B200",
+      "hourlyRate": 3.75,
+      "throughput": 0.8
+    },
+    {
+      "id": "b300",
+      "name": "B300",
+      "hourlyRate": 5.5,
+      "throughput": 1.0
+    },
+    {
+      "id": "mi300x",
+      "name": "MI300X",
+      "hourlyRate": 1.8,
+      "throughput": 0.35
+    },
+    {
+      "id": "mi355x",
+      "name": "MI355X",
+      "hourlyRate": 3.0,
+      "throughput": 0.75
+    }
+  ],
+  "models": {},
+  "sweep": {
+    "hourlyRate": {
+      "from": 0.5,
+      "to": 10,
+      "steps": 39
+    },
+    "utilization": {
+      "from": 0,
+      "to": 1,
+      "steps": 21
+    }
+  }
+}

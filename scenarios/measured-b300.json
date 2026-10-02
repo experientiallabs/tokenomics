@@ -1,0 +1,8 @@
+{
+  "notes": "Pins the SemiAnalysis AgentX B300 measurements from lib/models.mjs onto the matching Experiential catalog slugs; every other model and GPU stays generic.",
+  "models": {
+    "experiential:deepseek-v4-pro": { "gpus": { "b300": { "inputTpsPerGpu": 71409.72, "outputTpsPerGpu": 545.61, "cacheHitRate": 0.937 } } },
+    "experiential:glm-5.2": { "gpus": { "b300": { "inputTpsPerGpu": 18297.02, "outputTpsPerGpu": 117.82, "cacheHitRate": 0.912 } } },
+    "experiential:kimi-k3": { "gpus": { "b300": { "inputTpsPerGpu": 6035.46, "outputTpsPerGpu": 47.52, "cacheHitRate": 0.883 } } }
+  }
+}
