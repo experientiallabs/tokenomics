@@ -15,15 +15,20 @@
     <div id="load-error" role="alert" hidden></div>
     <section id="workspace" hidden>
       <div class="heading">
-        <div><h1 id="chart-title">B300 profitability</h1><p id="rental-summary"></p></div>
-        <label class="model-picker"><span class="sr-only">Model</span><select id="model"></select></label>
+        <div><h1 id="chart-title">GPU profitability</h1><p id="rental-summary"></p></div>
+      </div>
+      <div class="benchmark-pickers">
+        <label><span>Model</span><select id="model"></select></label>
+        <label><span>GPU / TPU</span><select id="gpu"></select></label>
+        <label><span>Serving setup</span><select id="setup"></select></label>
       </div>
       <p class="benchmark-credit">Benchmarks: <a href="https://inferencex.semianalysis.com/agentx" target="_blank" rel="noopener noreferrer">SemiAnalysis AgentX</a> / <a href="https://github.com/SemiAnalysisAI/InferenceX" target="_blank" rel="noopener noreferrer">InferenceX</a> <span>· Profitability model: Experiential Labs</span></p>
       <p id="catalog-credit" class="benchmark-credit" hidden>Catalog model with generic throughput, not a benchmark · Prices: live catalog · <a href="/explorer">Explorer</a></p>
       <div class="chart-toolbar">
         <p id="capacity-label"></p>
-        <div class="period-switch" role="group" aria-label="Profit period"><button data-months="1" aria-pressed="true">Monthly</button><button data-months="6" aria-pressed="false">6 months</button></div>
+        <label class="gpu-rate"><span>$/GPU-hour <output id="gpu-rate-value" for="gpu-rate">$5.50</output></span><input id="gpu-rate" type="range" min="0" max="25" step="0.01" value="5.5" aria-label="GPU hourly cost"><small id="rate-source"></small></label>
       </div>
+      <p id="benchmark-caveat" hidden></p>
       <div class="plot-wrap">
         <div id="heatmap"></div>
         <div id="chart-tooltip" class="tooltip" role="tooltip" hidden></div>
@@ -34,7 +39,7 @@
       <p id="selection" class="sr-only" aria-live="polite"></p>
       <details class="sources">
         <summary>Assumptions & sources</summary>
-        <div class="source-content"><p id="source-summary"></p><p id="assumption-notes"></p><div id="source-links"></div><p id="snapshot-label"></p></div>
+        <div class="source-content"><p id="source-summary"></p><p id="assumption-notes"></p><p id="rental-notes"></p><p id="tpu-notes"></p><div id="source-links"></div><p id="snapshot-label"></p></div>
       </details>
     </section>
   </main>

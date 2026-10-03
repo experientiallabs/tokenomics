@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import handler from '../api/index.mjs';
 import { economics, profitAt, formatTokenCount } from '../private/economics.mjs';
 import { models } from '../lib/models.mjs';
+import { models as benchmarkModels } from '../lib/benchmarks.mjs';
+import { unavailableAccelerators } from '../lib/rental-rates.mjs';
 import { readFile, mkdtemp, mkdir, cp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +17,7 @@ test('standalone deployment works with only the bundled D3 asset, without its No
   const bundle=await mkdtemp(join(tmpdir(),'tokenomics-bundle-test-'));
   try{
     for(const dir of ['api','lib','private','node_modules/d3/dist']) await mkdir(join(bundle,dir),{recursive:true});
-    for(const file of ['api/index.mjs','lib/models.mjs','lib/catalog.mjs','private/tokenomics.mjs','private/default-scenario.json','private/explorer.html','private/explorer.mjs','private/explorer.css','private/index.html','private/app.mjs','private/app.css','private/economics.mjs','node_modules/d3/dist/d3.min.js']) {
+    for(const file of ['api/index.mjs','lib/models.mjs','lib/benchmarks.mjs','lib/rental-rates.mjs','lib/agentx-snapshot.json','lib/catalog.mjs','private/tokenomics.mjs','private/default-scenario.json','private/explorer.html','private/explorer.mjs','private/explorer.css','private/index.html','private/app.mjs','private/app.css','private/economics.mjs','node_modules/d3/dist/d3.min.js']) {
       await cp(new URL('../'+file,import.meta.url),join(bundle,file));
     }
     const {default:serve}=await import(pathToFileURL(join(bundle,'api/index.mjs')));
@@ -43,7 +45,7 @@ test('every dashboard asset and model endpoint works without authentication conf
 
 test('model API serves the public registry only, without account or environment data',async()=>{
   const result=await call('/api/models',{cookie:'__Host-tokenomics-session=expired','oai-authenticated-user-email':'private@example.invalid'});
-  assert.deepEqual(JSON.parse(result.body),{models});
+  assert.deepEqual(JSON.parse(result.body),{models:benchmarkModels,unavailableAccelerators});
   assert.doesNotMatch(result.body,/private@example|SESSION_SECRET|GOOGLE_CLIENT_SECRET/);
   assert.equal(result.headers['set-cookie'],undefined);
 });
@@ -136,7 +138,10 @@ test('chart-first dashboard keeps tooltip and removes the settings and extra tab
   assert.match(page,/id="heatmap"/);
   assert.match(page,/id="references"/);
   assert.match(page,/<details class="sources">/);
-  assert.doesNotMatch(page,/<input\b|<table\b|class="controls"/);
+  assert.doesNotMatch(page,/<table\b|class="controls"|data-months/);
+  assert.equal((page.match(/<input\b/g)||[]).length,1);
+  assert.match(page,/<input id="gpu-rate" type="range"/);
+  for(const id of ['model','gpu','setup'])assert.match(page,new RegExp(`<select id="${id}"`));
 });
 test('SemiAnalysis benchmark attribution is linked above the chart, outside collapsed sources',async()=>{
   const page=String((await call('/')).body);
@@ -149,17 +154,18 @@ test('SemiAnalysis benchmark attribution is linked above the chart, outside coll
   assert.match(credit[0],/Profitability model: Experiential Labs/);
   assert.doesNotMatch(credit[0],/\bhidden\b|sr-only/);
 });
-test('inspected chart point uses both coordinates and scales the period without changing break-even',()=>{
+test('inspected chart point uses both coordinates and responds to hourly rental rate',()=>{
   const m=models[0],s={...m,gpus:8,hourlyRate:5.5,hours:730,utilization:1,otherMonthlyCost:0,inputPrice:.15,cachedPrice:.003,outputPrice:.6,feeRate:0};
   const e=economics(s),u=.75,p=.02;
   assert.equal(profitAt(s,u,p),e.millionTokensAtFull*u*p-e.rent);
   assert(Math.abs(profitAt(s,.5,e.breakEvenPrice/.5))<1e-8);
-  assert.equal(profitAt(s,0,p)*6,-192720);
+  assert.equal(profitAt({...s,hourlyRate:0},0,p),0);
+  assert.equal(profitAt({...s,hourlyRate:6.5},u,p),profitAt(s,u,p)-8*730);
   assert(profitAt(s,u,p)>profitAt(s,.5,p));
   assert(profitAt(s,u,p)>profitAt(s,u,.01));
 });
 
-test('all five model choices keep the eight-B300 rental assumption',()=>{
+test('historical B300 fixtures remain reproducible for the price-reference registry',()=>{
   assert.deepEqual(models.map(m=>m.id),['deepseek-v41-flash-b300','deepseek-v4-pro-b300','glm-52-b300','glm-53-proxy-b300','kimi-k3-b300']);
   for(const m of models){
     assert.equal(m.hardware,'B300');assert.equal(m.defaultGpuCount,8);assert.equal(m.defaultHourlyRate,5.5);assert.equal(m.defaultHoursPerMonth,730);
@@ -194,7 +200,7 @@ test('new model capacities match frozen official calculator and actual eight-GPU
   }
 });
 
-test('GLM-5.3 is visibly a 5.2 proxy, not a relabeled measurement',()=>{
+test('historical GLM-5.3 fixture remains explicitly labeled as a 5.2 proxy',()=>{
   const baseline=models.find(m=>m.id==='glm-52-b300'),proxy=models.find(m=>m.id==='glm-53-proxy-b300');
   assert.match(proxy.name,/estimate/);assert.equal(proxy.estimateFrom,'GLM-5.2');assert.equal(proxy.capacityKind,'proxy');assert.equal(proxy.benchmarkModel,'glm5.2');
   for(const key of ['inputTpsPerGpu','outputTpsPerGpu','cacheHitRate','sourceApi','measuredAt'])assert.equal(proxy[key],baseline[key]);

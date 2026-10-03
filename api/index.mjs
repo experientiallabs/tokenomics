@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { models } from '../lib/models.mjs';
+import { models } from '../lib/benchmarks.mjs';
+import { unavailableAccelerators } from '../lib/rental-rates.mjs';
 import { loadCatalog, SOURCE_URLS } from '../lib/catalog.mjs';
 import { buildReport, heatmapModel, mergeScenario, reportToCsv, ScenarioError, SOURCES } from '../private/tokenomics.mjs';
 
@@ -118,7 +119,7 @@ async function handle(req, res, catalogLoader) {
     if (path === '/health') return send(200, '{"ok":true}', 'application/json');
     if (path === '/robots.txt') return send(200, 'User-agent: *\nAllow: /\n');
     if (path === '/favicon.svg') return send(200, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#10151d"/><path d="M8 24V18M16 24V12M24 24V6" stroke="#b8ef5d" stroke-width="4"/></svg>', 'image/svg+xml');
-    if (path === '/api/models') return send(200, JSON.stringify({ models }), 'application/json');
+    if (path === '/api/models') return send(200, JSON.stringify({ models, unavailableAccelerators }), 'application/json');
     const asset = assets.get(path);
     if (asset) return send(200, readFileSync(asset[1]), asset[0]);
     return send(404, 'Not found');
