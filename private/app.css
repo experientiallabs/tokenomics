@@ -44,7 +44,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .plot-wrap { position: relative; margin-top: 8px; user-select: none; }
 #heatmap svg, #color-legend svg { display: block; width: 100%; }
 #heatmap text, #color-legend text { fill: var(--ink); font-size: 12px; font-weight: 400; }
-#heatmap .tick-volume { fill: var(--muted); font-size: 11px; }
+#heatmap .tick-volume { fill: var(--ink); font-size: 12px; font-weight: 500; }
 #heatmap .plot-hit { cursor: crosshair; touch-action: pan-y; }
 .references { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 3px 0 0 76px; }
 .references button { display: inline-flex; align-items: center; gap: 7px; background: transparent; padding: 4px 0; font-size: 12px; }

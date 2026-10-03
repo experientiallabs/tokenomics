@@ -100,7 +100,7 @@ function draw() {
     .text(u => `${formatTokenCount(e.millionTokensAtFull * 1e6 * u)}/mo`);
   gx.selectAll('.tick').filter(d => d === 0).select('text').attr('text-anchor', 'start');
   gx.selectAll('.tick').filter(d => d === 1).select('text').attr('text-anchor', 'end');
-  svg.append('text').attr('x', (frame.left + frame.right) / 2).attr('y', height - 9).attr('text-anchor', 'middle').text('Paid TPS utilization (%)');
+  svg.append('text').attr('class', 'utilization-axis-title').attr('x', (frame.left + frame.right) / 2).attr('y', height - 9).attr('text-anchor', 'middle').text('Utilization (%) · total tokens/month');
   svg.append('text').attr('transform', `translate(14,${(frame.top + frame.bottom) / 2}) rotate(-90)`).attr('text-anchor', 'middle').text('Blended price ($ / 1M total tokens)');
   const hover = field.append('g').attr('display', 'none').attr('pointer-events', 'none');
   hover.append('line').attr('class', 'hover-x').attr('stroke', 'var(--ink)').attr('stroke-opacity', .45);

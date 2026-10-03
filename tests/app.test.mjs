@@ -127,7 +127,8 @@ test('chart keeps percentage ticks above monthly token volumes',async()=>{
   assert.match(app,/attr\('class', 'tick-volume'\)/);
   assert.match(app,/formatTokenCount\(e\.millionTokensAtFull \* 1e6 \* u\)\}\/mo/);
   assert.match(app,/including cached input/);
-  assert.match(String((await call('/app.css')).body),/#heatmap \.tick-volume/);
+  assert.match(app,/Utilization \(%\) · total tokens\/month/);
+  assert.match(String((await call('/app.css')).body),/#heatmap \.tick-volume \{ fill: var\(--ink\); font-size: 12px; font-weight: 500; \}/);
 });
 test('chart-first dashboard keeps tooltip and removes the settings and extra tables',async()=>{
   const page=String((await call('/')).body);
