@@ -14,7 +14,7 @@ This is an independent visualization, not an official SemiAnalysis product. We a
 
 The plots show **monthly revenue minus GPU rent** across utilization and blended token prices. Choose a model, GPU and serving setup; drag the **$/GPU-hour** slider to update the chart. The x-axis also shows total tokens/month, including cached input.
 
-The current snapshot includes **9 models, 10 GPU types and 85 serving curves**. Each curve uses its highest measured throughput meeting 50 output tokens/sec/user (p90); curves with no qualifying point are visibly marked. This is not a complete historical archive. Larger multi-node runs retain their actual GPU count. Smaller serving units are replicated to eight GPUs and labeled as replication assumptions. GLM-5.3 now has its own measured results.
+The dashboard includes **8 models, 10 GPU types and 73 serving curves**; GLM-5.2 is excluded. Each curve uses its highest measured throughput meeting 50 output tokens/sec/user (p90); curves with no qualifying point are visibly marked. This is not a complete historical archive. Larger multi-node runs retain their actual GPU count. Smaller serving units are replicated to eight GPUs and labeled as replication assumptions. GLM-5.3 has its own measured results.
 
 B300 defaults to **$5.50/GPU-hour**. Other defaults are provider list-price references checked October 3, 2026, not negotiated quotes or guaranteed availability. Vera Rubin has only a labeled SemiAnalysis rental estimate. All rates are editable and retained per GPU during the session. Sources and terms: [`lib/rental-rates.mjs`](lib/rental-rates.mjs).
 

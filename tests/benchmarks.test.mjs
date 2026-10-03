@@ -9,15 +9,27 @@ const rows = snapshot.sources.flatMap(source => source.rows);
 const scenario = m => ({ ...m, gpus: m.defaultGpuCount, hourlyRate: m.defaultHourlyRate, hours: 730,
   utilization: 1, otherMonthlyCost: 0, feeRate: 0, inputPrice: 0, cachedPrice: 0, outputPrice: 0 });
 
-test('latest registry exposes every available AgentX curve and no fixed-sequence substitutes', () => {
+test('latest registry exposes all non-retired AgentX curves and no fixed-sequence substitutes', () => {
   assert.equal(rows.length, 948);
-  assert.equal(models.length, 85);
-  assert.equal(new Set(models.map(m => m.modelKey)).size, 9);
+  assert.equal(models.length, 73);
+  assert.equal(new Set(models.map(m => m.modelKey)).size, 8);
   assert.equal(new Set(models.map(m => m.hardwareKey)).size, 10);
   assert.equal(new Set(models.map(m => m.id)).size, models.length);
-  assert.equal(new Set(rows.map(curveKey)).size, models.length);
+  assert.equal(new Set(rows.filter(row => row.model !== 'glm5.2').map(curveKey)).size, models.length);
   assert(rows.every(row => row.benchmark_type === 'agentic_traces'));
   assert(models.some(m => m.modelKey === 'glm5.3' && m.benchmarkModel === 'glm5.3' && !m.estimateFrom));
+});
+
+test('GLM-5.2 is removed and GLM-5.3 has a plain name backed by its own measurements', () => {
+  assert(!models.some(m => m.modelKey === 'glm5.2' || /GLM-5\.2/.test(m.name)));
+  const glm53 = models.filter(m => m.modelKey === 'glm5.3');
+  assert(glm53.length > 0);
+  for (const model of glm53) {
+    assert.equal(model.name, 'GLM-5.3');
+    assert.equal(model.capacityKind, 'measured');
+    assert.equal(model.benchmarkModel, 'glm5.3');
+    assert.equal(model.estimateFrom, undefined);
+  }
 });
 
 test('every chart point reproduces its source throughput, cache share, and physical GPU count', () => {

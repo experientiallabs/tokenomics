@@ -4,6 +4,9 @@
   const { economics, formatTokenCount } = await import('/economics.mjs');
   const $ = id => document.getElementById(id);
   const assert = (ok, label) => { if (!ok) throw new Error(label); };
+  assert(!data.models.some(m => m.modelKey === 'glm5.2'), 'GLM-5.2 removed from API');
+  assert(![...$('model').options].some(option => /GLM-5\.2/.test(option.text)), 'GLM-5.2 removed from dropdown');
+  assert([...$('model').options].some(option => option.text === 'GLM-5.3'), 'Plain GLM-5.3 label');
   const select = (id, value) => { $(id).value = value; $(id).dispatchEvent(new Event('change', { bubbles: true })); };
   const frame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const currency = n => (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
