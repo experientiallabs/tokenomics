@@ -1,4 +1,4 @@
-import { economics, profitAt } from '/economics.mjs';
+import { economics, profitAt, formatTokenCount } from '/economics.mjs';
 
 const $ = id => document.getElementById(id);
 const money = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -54,8 +54,8 @@ function draw() {
   if (!window.d3 || !scenario) return;
   const d3 = window.d3, host = $('heatmap'), width = host.clientWidth;
   if (!width) return;
-  const narrow = width < 500, height = narrow ? 355 : 420;
-  const frame = { left: narrow ? 64 : 76, right: width - 12, top: 18, bottom: height - 55 };
+  const narrow = width < 500, height = narrow ? 373 : 438;
+  const frame = { left: narrow ? 64 : 76, right: width - 12, top: 18, bottom: height - 73 };
   const e = economics(scenario);
   const ceiling = Math.ceil(Math.max(...references.map(r => r.price), e.breakEvenPrice) * 1.75 / .005) * .005;
   const x = d3.scaleLinear().domain([0, 1]).range([frame.left, frame.right]);
@@ -67,7 +67,7 @@ function draw() {
   host.replaceChildren();
   const svg = d3.select(host).append('svg').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
   svg.append('title').text(`${current.hardware} profitability: utilization × price`);
-  svg.append('desc').text('The curve is break-even. Above it is profit; below it is loss. Hover or tap to inspect a point. Keyboard: focus the chart and use arrow keys; Enter pins and Escape clears.');
+  svg.append('desc').text('The curve is break-even. Above it is profit; below it is loss. Each utilization percentage has total paid tokens per month below it, including cached input. Hover or tap to inspect a point. Keyboard: focus the chart and use arrow keys; Enter pins and Escape clears.');
   svg.append('defs').append('clipPath').attr('id', 'plot-clip').append('rect').attr('x', frame.left).attr('y', frame.top).attr('width', frame.right - frame.left).attr('height', frame.bottom - frame.top);
   const field = svg.append('g').attr('clip-path', 'url(#plot-clip)');
   const cells = d3.range(50).flatMap(i => d3.range(75).map(j => ({ u: i / 50, p: j * ceiling / 75 })));
@@ -92,9 +92,12 @@ function draw() {
     }
   }
   svg.append('rect').attr('x', frame.left).attr('y', frame.top).attr('width', frame.right - frame.left).attr('height', frame.bottom - frame.top).attr('fill', 'none').attr('stroke', 'var(--line)');
-  const gx = svg.append('g').attr('transform', `translate(0,${frame.bottom})`).call(d3.axisBottom(x).tickValues(xTicks).tickFormat(pct).tickSize(0).tickPadding(10));
+  const gx = svg.append('g').attr('class', 'utilization-axis').attr('transform', `translate(0,${frame.bottom})`).call(d3.axisBottom(x).tickValues(xTicks).tickFormat(pct).tickSize(0).tickPadding(10));
   const gy = svg.append('g').attr('transform', `translate(${frame.left},0)`).call(d3.axisLeft(y).tickValues(yTicks).tickFormat(v => '$' + v.toFixed(3)).tickSize(0).tickPadding(8));
   gx.select('.domain').remove(); gy.select('.domain').remove();
+  gx.selectAll('.tick text').text(null).append('tspan').attr('class', 'tick-percent').attr('x', 0).text(pct);
+  gx.selectAll('.tick text').append('tspan').attr('class', 'tick-volume').attr('x', 0).attr('dy', '1.5em')
+    .text(u => `${formatTokenCount(e.millionTokensAtFull * 1e6 * u)}/mo`);
   gx.selectAll('.tick').filter(d => d === 0).select('text').attr('text-anchor', 'start');
   gx.selectAll('.tick').filter(d => d === 1).select('text').attr('text-anchor', 'end');
   svg.append('text').attr('x', (frame.left + frame.right) / 2).attr('y', height - 9).attr('text-anchor', 'middle').text('Paid TPS utilization (%)');

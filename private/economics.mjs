@@ -1,3 +1,6 @@
+const tokenCountFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 });
+export const formatTokenCount = tokens => tokenCountFormat.format(tokens);
+
 export function economics(s) {
   const totalPerGpu = s.inputTpsPerGpu + s.outputTpsPerGpu;
   const totalTps = totalPerGpu * s.gpus;

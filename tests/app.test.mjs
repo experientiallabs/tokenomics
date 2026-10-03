@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import handler from '../api/index.mjs';
-import { economics, profitAt } from '../private/economics.mjs';
+import { economics, profitAt, formatTokenCount } from '../private/economics.mjs';
 import { models } from '../lib/models.mjs';
 import { readFile, mkdtemp, mkdir, cp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -106,6 +106,28 @@ test('benchmark economics reproduce the prior dashboard',()=>{
   assert(e.breakEvenUtilization>.42&&e.breakEvenUtilization<.43);
   assert.equal(economics({...s,utilization:0}).profit,-32120);assert.equal(economics({...s,utilization:0}).margin,null);
   assert.equal(economics({...s,inputPrice:0,cachedPrice:0,outputPrice:0}).breakEvenUtilization,null);
+});
+test('monthly token tick labels use compact units and the selected model capacity',()=>{
+  assert.deepEqual([0,1234,1234567,1234567890,1234567890123].map(formatTokenCount),['0','1.23K','1.23M','1.23B','1.23T']);
+  const expected=[
+    ['0','1.14T','2.29T','3.43T','4.58T'],
+    ['0','378B','756B','1.13T','1.51T'],
+    ['0','96.8B','194B','290B','387B'],
+    ['0','96.8B','194B','290B','387B'],
+    ['0','32B','63.9B','95.9B','128B'],
+  ];
+  for(const [i,m] of models.entries()){
+    const e=economics({...m,gpus:m.defaultGpuCount,hours:m.defaultHoursPerMonth});
+    assert.deepEqual([0,.25,.5,.75,1].map(u=>formatTokenCount(e.millionTokensAtFull*1e6*u)),expected[i],m.name);
+  }
+});
+test('chart keeps percentage ticks above monthly token volumes',async()=>{
+  const app=String((await call('/app.mjs')).body);
+  assert.match(app,/attr\('class', 'tick-percent'\)/);
+  assert.match(app,/attr\('class', 'tick-volume'\)/);
+  assert.match(app,/formatTokenCount\(e\.millionTokensAtFull \* 1e6 \* u\)\}\/mo/);
+  assert.match(app,/including cached input/);
+  assert.match(String((await call('/app.css')).body),/#heatmap \.tick-volume/);
 });
 test('chart-first dashboard keeps tooltip and removes the settings and extra tables',async()=>{
   const page=String((await call('/')).body);
