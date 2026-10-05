@@ -1,4 +1,14 @@
 {
-  "gpus": { "h100": { "hourlyRate": 1.5 }, "h200": { "hourlyRate": 1.9 } },
-  "fleet": { "utilization": 0.8 }
+  "gpus": {
+    "h100": {
+      "hourlyRate": 2.0
+    },
+    "h200": {
+      "hourlyRate": 2.5
+    },
+    "b300": {}
+  },
+  "fleet": {
+    "utilization": 0.8
+  }
 }

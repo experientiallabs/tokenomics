@@ -1,0 +1,14 @@
+{
+  "notes": "Pins your own throughput for one model on one GPU; every other model and GPU stays measured or estimated.",
+  "models": {
+    "glm-5.3": {
+      "gpus": {
+        "b300": {
+          "inputTpsPerGpu": 18000,
+          "outputTpsPerGpu": 120,
+          "cacheHitRate": 0.91
+        }
+      }
+    }
+  }
+}

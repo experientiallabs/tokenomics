@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { models } from '../lib/benchmarks.mjs';
 import { unavailableAccelerators } from '../lib/rental-rates.mjs';
 import { loadCatalog, SOURCE_URLS } from '../lib/catalog.mjs';
-import { buildReport, heatmapModel, mergeScenario, reportToCsv, ScenarioError, SOURCES } from '../private/tokenomics.mjs';
+import { mergeScenario, reportToCsv, ScenarioError, SOURCES } from '../private/tokenomics.mjs';
+import { loadEstimates, runReport } from '../lib/estimates.mjs';
 
 const defaultScenarioUrl = new URL('../private/default-scenario.json', import.meta.url);
 export const defaultScenario = () => JSON.parse(readFileSync(defaultScenarioUrl, 'utf8'));
@@ -14,9 +15,7 @@ const assets = new Map([
   ['/app.css', ['text/css; charset=utf-8', new URL('../private/app.css', import.meta.url)]],
   ['/app.mjs', ['text/javascript; charset=utf-8', new URL('../private/app.mjs', import.meta.url)]],
   ['/economics.mjs', ['text/javascript; charset=utf-8', new URL('../private/economics.mjs', import.meta.url)]],
-  ['/explorer', ['text/html; charset=utf-8', new URL('../private/explorer.html', import.meta.url)]],
-  ['/explorer.css', ['text/css; charset=utf-8', new URL('../private/explorer.css', import.meta.url)]],
-  ['/explorer.mjs', ['text/javascript; charset=utf-8', new URL('../private/explorer.mjs', import.meta.url)]],
+  ['/estimate.mjs', ['text/javascript; charset=utf-8', new URL('../private/estimate.mjs', import.meta.url)]],
   ['/tokenomics.mjs', ['text/javascript; charset=utf-8', new URL('../private/tokenomics.mjs', import.meta.url)]],
   ['/default-scenario.json', ['application/json', defaultScenarioUrl]],
   ['/d3.min.js', ['text/javascript; charset=utf-8', new URL('../node_modules/d3/dist/d3.min.js', import.meta.url)]],
@@ -46,10 +45,7 @@ async function report(req, url, catalogLoader) {
     throw error instanceof BadRequest ? error : new BadRequest('Scenario must be valid JSON.');
   }
   const scenario = mergeScenario(defaultScenario(), patch);
-  const sources = Array.isArray(scenario.catalog?.sources) ? scenario.catalog.sources.filter(s => SOURCES.includes(s)) : [];
-  const catalog = await catalogLoader(sources);
-  const result = buildReport(catalog.models, scenario, { curves: ['1', 'true'].includes(url.searchParams.get('curves')) });
-  return { generatedAt: new Date().toISOString(), sources: catalog.status, ...result };
+  return runReport(scenario, { curves: ['1', 'true'].includes(url.searchParams.get('curves')), catalogLoader });
 }
 
 export function createHandler({ catalogLoader = loadCatalog } = {}) { return (req, res) => handle(req, res, catalogLoader); }
@@ -85,25 +81,7 @@ async function handle(req, res, catalogLoader) {
       res.setHeader('Allow', path === '/api/report' ? 'GET, HEAD, POST' : 'GET, HEAD');
       return send(405, 'Method not allowed');
     }
-    if (path === '/api/heatmap-model') {
-      // One catalog model on one GPU, shaped like /api/models entries, for the original heatmap.
-      try {
-        let patch;
-        try { patch = JSON.parse(url.searchParams.get('scenario') || '{}'); } catch { throw new BadRequest('Scenario must be valid JSON.'); }
-        const scenario = mergeScenario(defaultScenario(), patch);
-        const id = url.searchParams.get('id') || '', gpu = url.searchParams.get('gpu') || '';
-        const source = id.split(':')[0];
-        if (!SOURCES.includes(source)) throw new BadRequest(`id must look like source:slug with a source of ${SOURCES.join(', ')}`);
-        const catalog = await catalogLoader([source]);
-        const model = heatmapModel(catalog.models, { ...scenario, catalog: { ...scenario.catalog, sources: [source] } }, id, gpu);
-        const query = encodeURIComponent(JSON.stringify(patch));
-        model.sourceLinks = [['Catalog API', SOURCE_URLS[source]], ['Report for this scenario', `/api/report?scenario=${query}`], ['Open in explorer', '/explorer']];
-        return send(200, JSON.stringify({ model }), 'application/json');
-      } catch (error) {
-        if (error instanceof BadRequest || error instanceof ScenarioError) return send(400, JSON.stringify({ error: error.message }), 'application/json');
-        throw error;
-      }
-    }
+    if (path === '/api/estimates') return send(200, JSON.stringify(await loadEstimates(catalogLoader)), 'application/json');
     if (path === '/api/scenario') return send(200, JSON.stringify(defaultScenario()), 'application/json');
     if (path === '/api/catalog') {
       const requested = (url.searchParams.get('sources') || defaultScenario().catalog.sources.join(',')).split(',').filter(s => SOURCES.includes(s));
