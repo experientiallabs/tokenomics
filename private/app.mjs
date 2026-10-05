@@ -1,4 +1,5 @@
 import { economics, profitAt, formatTokenCount } from '/economics.mjs';
+import { ANCHOR_SLUGS, estimateEntry } from '/estimate.mjs';
 
 const $ = id => document.getElementById(id);
 const money = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -7,6 +8,22 @@ const price = v => '$' + v.toFixed(4) + '/M';
 const compactMoney = v => v === 0 ? '$0' : (v < 0 ? '−' : '+') + '$' + Math.abs(v / 1000).toFixed(0) + 'k';
 let models = [], unavailableAccelerators = [], current, scenario, references = [], pinned = null, context, chartCeiling;
 const hourlyRates = new Map();
+// Estimates for catalog models (and measured models on unmeasured GPUs), filled after /api/estimates loads.
+let estimates = null;
+const generated = new Map();
+const entryById = id => models.find(m => m.id === id) || generated.get(id);
+const catalogModelFor = modelKey => modelKey.startsWith('catalog:') ? estimates?.catalog.find(c => `catalog:${c.slug}` === modelKey)
+  : estimates?.catalog.find(c => c.slug === ANCHOR_SLUGS[modelKey]);
+function estimateFor(modelKey, gpuKey) {
+  const model = catalogModelFor(modelKey);
+  const entry = model && estimateEntry(estimates.fit, model, gpuKey, estimates.fetchedAt.slice(0, 10));
+  if (!entry) return null;
+  // A measured model keeps its own key and name, so its GPUs stay in one dropdown entry.
+  const measured = models.find(m => m.modelKey === modelKey);
+  const full = measured ? { ...entry, id: `estimate-${modelKey}-${gpuKey}`, modelKey, name: measured.name } : entry;
+  generated.set(full.id, full);
+  return full;
+}
 
 function modelScenario(m, p = m.prices[0] || { input: 0, cached: 0, output: 0 }) {
   return { gpus: m.defaultGpuCount, hourlyRate: hourlyRates.get(m.hardwareKey) ?? m.defaultHourlyRate, hours: m.defaultHoursPerMonth,
@@ -22,6 +39,9 @@ function setOptions(id, entries, value) {
 function selectModel(modelKey, preferredGpu = current?.hardwareKey) {
   const options = models.filter(m => m.modelKey === modelKey);
   const gpus = [...new Map(options.map(m => [m.hardwareKey, m.hardware])).entries()];
+  if (estimates && catalogModelFor(modelKey)) {
+    for (const [key, gpu] of Object.entries(estimates.fit.gpus)) if (!gpus.some(([k]) => k === key)) gpus.push([key, `${gpu.label} · estimate`]);
+  }
   setOptions('gpu', gpus, preferredGpu);
   for (const item of unavailableAccelerators) {
     const option = new Option(`${item.name} · no AgentX data`, item.id); option.disabled = true;
@@ -31,14 +51,15 @@ function selectModel(modelKey, preferredGpu = current?.hardwareKey) {
 }
 
 function selectGpu() {
-  const options = models.filter(m => m.modelKey === $('model').value && m.hardwareKey === $('gpu').value);
+  const measured = models.filter(m => m.modelKey === $('model').value && m.hardwareKey === $('gpu').value);
+  const options = measured.length ? measured : [estimateFor($('model').value, $('gpu').value)].filter(Boolean);
   setOptions('setup', options.map(m => [m.id, m.setupLabel || m.engine]));
   useModel(options[0]);
 }
 
 function useModel(m) {
   current = m;
-  const isCatalog = m.id.startsWith('catalog:');
+  const isEstimate = m.capacityKind === 'estimate';
   scenario = modelScenario(m);
   pinned = null;
   references = m.prices.map((p, i) => ({ id: p.id, name: p.name, price: economics(modelScenario(m, p)).blend,
@@ -54,21 +75,22 @@ function useModel(m) {
   $('assumption-notes').textContent = m.assumptions;
   const caveats = [
     m.targetMet === false ? `Below speed target: ${m.measuredInteractivity.toFixed(1)} of 50 tokens/sec/user.` : '',
-    !isCatalog && m.defaultGpuCount > 8 ? `Measured ${m.defaultGpuCount}-GPU setup, not 8 GPUs.` : '',
+    isEstimate ? `Estimate, not a SemiAnalysis measurement. A typical estimate is off by about ${estimates.fit.typicalErrorFactor.toFixed(1)}x either way.` : '',
+    m.defaultGpuCount > 8 ? `Measured ${m.defaultGpuCount}-GPU setup, not 8 GPUs.` : '',
     m.replicas > 1 ? `8-GPU capacity assumes ${m.replicas} replicas of the measured ${m.measuredGpuCount}-GPU setup.` : '',
   ].filter(Boolean);
   $('benchmark-caveat').textContent = caveats.join(' '); $('benchmark-caveat').hidden = !caveats.length;
-  document.querySelector('.benchmark-credit:not(#catalog-credit)').hidden = isCatalog;
-  $('catalog-credit').hidden = !isCatalog;
-  if (isCatalog) $('catalog-credit').firstChild.textContent = `${m.capacityKind === 'generic' ? 'Catalog model with generic throughput, not a benchmark' : 'Catalog model with scenario-pinned throughput'} · Prices: live catalog · `;
-  const sources = m.sourceLinks ? [...m.sourceLinks] : [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['SemiAnalysis AgentX methodology', m.methodology],
+  document.querySelector('.benchmark-credit:not(#estimate-credit)').hidden = isEstimate;
+  $('estimate-credit').hidden = !isEstimate;
+  const sources = isEstimate ? [['SemiAnalysis AgentX methodology', 'https://inferencex.semianalysis.com/agentx'], ['Experiential catalog', 'https://api.experientiallabs.ai/api/models'], ['Estimator inputs (JSON)', '/api/estimates']]
+    : [['Benchmark results', m.source], ['Calculator data', m.sourceApi], ['SemiAnalysis AgentX methodology', m.methodology],
     ...m.prices.filter(p => p.source).map(p => [p.source.includes('openrouter.ai') ? 'OpenRouter prices' : `${p.name} prices`, p.source]), ...(m.extraSources || [])];
   if (m.rental?.source) sources.push([`${m.rental.provider} rental pricing`, m.rental.source]);
   sources.push(['Google TPU pricing', 'https://cloud.google.com/tpu/pricing']);
   $('source-links').replaceChildren(...sources.filter((source, i) => source[1] && sources.findIndex(other => other[1] === source[1]) === i).map(([label, url]) => {
     const a = document.createElement('a'); a.textContent = label; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
   }));
-  $('snapshot-label').textContent = isCatalog ? `${m.capacityKind === 'generic' ? 'Generic throughput, not a benchmark' : 'Scenario-pinned throughput'} · Prices: live catalog, ${m.pricesAsOf}. Reference prices are not guaranteed sales.` : `Benchmark: ${m.measuredAt} · Source snapshot: ${m.snapshotAt}${m.prices.length ? ` · Token prices: ${m.pricesAsOf}` : ' · No verified token-price reference'}. Reference prices are not guaranteed sales.`;
+  $('snapshot-label').textContent = isEstimate ? `Estimate fitted to ${estimates.fit.points} AgentX measurements · Catalog prices: ${m.pricesAsOf}. Reference prices are not guaranteed sales.` : `Benchmark: ${m.measuredAt} · Source snapshot: ${m.snapshotAt}${m.prices.length ? ` · Token prices: ${m.pricesAsOf}` : ' · No verified token-price reference'}. Reference prices are not guaranteed sales.`;
   $('tpu-notes').textContent = unavailableAccelerators.map(item => `${item.name}: $${item.hourlyRate.toFixed(2)}/chip-hour (${item.terms}, ${item.region}).`).join(' ') + ' No TPU runs in this AgentX snapshot, so TPU profit curves are unavailable.';
   $('gpu-rate').max = String(Math.max(25, Math.ceil(scenario.hourlyRate)));
   $('gpu-rate').value = String(scenario.hourlyRate);
@@ -89,7 +111,7 @@ function render() {
   const r = current.rental;
   const changed = Math.abs(scenario.hourlyRate - current.defaultHourlyRate) > .0001;
   $('rate-source').textContent = changed ? 'Custom rate' : !r ? 'Scenario rate' : r.kind === 'user' ? 'Your B300 default' : r.kind === 'estimate' ? 'SemiAnalysis estimate, not a quote' : `${r.provider} list price`;
-  $('rental-notes').textContent = `${scenario.gpus} GPUs at $${scenario.hourlyRate.toFixed(2)}/GPU-hour; ${scenario.hours} hours/month. ${r ? `Default: $${r.rate.toFixed(2)}, ${r.provider}, ${r.terms}. Checked ${r.checkedAt}. ${r.note || ''}` : 'Rate comes from the Explorer scenario.'}`;
+  $('rental-notes').textContent = `${scenario.gpus} GPUs at $${scenario.hourlyRate.toFixed(2)}/GPU-hour; ${scenario.hours} hours/month. ${r ? `Default: $${r.rate.toFixed(2)}, ${r.provider}, ${r.terms}. Checked ${r.checkedAt}. ${r.note || ''}` : ''}`;
   draw();
 }
 
@@ -216,29 +238,46 @@ function showPoint(value, announce = false) {
   if (announce) $('selection').textContent = `${point.textContent}. ${result.textContent} ${label.textContent.toLowerCase()}.`;
 }
 
-// Same base64url JSON encoding the explorer writes into its link hash.
-const decodeScenario = text => decodeURIComponent(escape(atob(text.replace(/-/g, '+').replace(/_/g, '/'))));
+function fillModelPicker() {
+  const value = $('model').value;
+  const measured = document.createElement('optgroup'); measured.label = 'Measured by SemiAnalysis';
+  measured.append(...[...new Map(models.map(m => [m.modelKey, m.name])).entries()].map(([key, name]) => new Option(name, key)));
+  const groups = [measured];
+  if (estimates) {
+    const anchors = new Set(Object.values(ANCHOR_SLUGS));
+    const rest = estimates.catalog.filter(c => !anchors.has(c.slug));
+    const estimated = document.createElement('optgroup'); estimated.label = `Estimated · every other catalog model (${rest.length})`;
+    estimated.append(...rest.map(c => new Option(`${c.name} · estimate`, `catalog:${c.slug}`)));
+    groups.push(estimated);
+  }
+  $('model').replaceChildren(...groups);
+  if (value) $('model').value = value;
+}
+
+// Catalog estimates load after the measured chart is on screen, so a slow catalog never blocks it.
+async function loadEstimates() {
+  try {
+    const response = await fetch('/api/estimates', { cache: 'no-store' });
+    if (!response.ok) throw new Error();
+    estimates = await response.json();
+    fillModelPicker();
+    selectModel($('model').value, current?.hardwareKey);
+    $('estimate-status').hidden = true;
+  } catch {
+    $('estimate-status').textContent = 'Catalog estimates are unavailable right now; measured models still work.';
+  }
+}
 
 async function boot() {
   const response = await fetch('/api/models', { cache: 'no-store' });
   if (!response.ok) throw new Error('Could not load the chart. Please reload and try again.');
   const data = await response.json(); models = data.models; unavailableAccelerators = data.unavailableAccelerators || [];
-  // /?catalog=<source:slug>&gpu=<id>#s=<scenario> adds one catalog model from the explorer to the picker.
-  const query = new URLSearchParams(location.search);
-  if (query.get('catalog')) {
-    const scenario = new URLSearchParams(location.hash.slice(1)).get('s');
-    const params = new URLSearchParams({ id: query.get('catalog'), gpu: query.get('gpu') || '' });
-    if (scenario) params.set('scenario', decodeScenario(scenario));
-    const extra = await fetch(`/api/heatmap-model?${params}`, { cache: 'no-store' });
-    if (!extra.ok) throw new Error((await extra.json().catch(() => ({}))).error || 'Could not load that catalog model.');
-    const model = (await extra.json()).model;
-    models = [{ ...model, modelKey: model.id, hardwareKey: `catalog-${model.hardware}`, setupLabel: model.engine || 'Explorer scenario' }, ...models];
-  }
-  setOptions('model', [...new Map(models.map(m => [m.modelKey, m.name])).entries()]);
+  fillModelPicker();
   $('workspace').hidden = false; selectModel(models[0].modelKey);
   $('model').addEventListener('change', () => selectModel($('model').value));
   $('gpu').addEventListener('change', selectGpu);
-  $('setup').addEventListener('change', () => useModel(models.find(m => m.id === $('setup').value)));
+  $('setup').addEventListener('change', () => useModel(entryById($('setup').value)));
+  loadEstimates();
   let rateFrame;
   $('gpu-rate').addEventListener('input', () => {
     scenario.hourlyRate = Number($('gpu-rate').value);

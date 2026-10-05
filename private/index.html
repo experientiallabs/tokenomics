@@ -9,7 +9,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/">Tokenomics <span>Experiential Labs</span></a>
-    <nav class="nav"><a href="/" aria-current="page">Benchmarks</a><a href="/explorer">Explorer</a></nav>
+    
   </header>
   <main>
     <div id="load-error" role="alert" hidden></div>
@@ -23,7 +23,8 @@
         <label><span>Serving setup</span><select id="setup"></select></label>
       </div>
       <p class="benchmark-credit">Benchmarks: <a href="https://inferencex.semianalysis.com/agentx" target="_blank" rel="noopener noreferrer">SemiAnalysis AgentX</a> / <a href="https://github.com/SemiAnalysisAI/InferenceX" target="_blank" rel="noopener noreferrer">InferenceX</a> <span>· Profitability model: Experiential Labs</span></p>
-      <p id="catalog-credit" class="benchmark-credit" hidden>Catalog model with generic throughput, not a benchmark · Prices: live catalog · <a href="/explorer">Explorer</a></p>
+      <p id="estimate-credit" class="benchmark-credit" hidden>Estimate, not a benchmark: throughput inferred from <a href="https://inferencex.semianalysis.com/agentx" target="_blank" rel="noopener noreferrer">SemiAnalysis AgentX</a> measurements and our catalog price · Profitability model: Experiential Labs</p>
+      <p id="estimate-status" class="benchmark-credit" aria-live="polite">Loading catalog estimates…</p>
       <div class="chart-toolbar">
         <p id="capacity-label"></p>
         <label class="gpu-rate"><span>$/GPU-hour <output id="gpu-rate-value" for="gpu-rate">$5.50</output></span><input id="gpu-rate" type="range" min="0" max="25" step="0.01" value="5.5" aria-label="GPU hourly cost"><small id="rate-source"></small></label>

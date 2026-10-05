@@ -22,47 +22,36 @@ TPU Ironwood and Trillium are listed as unavailable in the benchmark dropdown: G
 
 Benchmark selection: [`lib/benchmarks.mjs`](lib/benchmarks.mjs). Raw public data: [`lib/agentx-snapshot.json`](lib/agentx-snapshot.json). Refresh with `node scripts/refresh-agentx.mjs`, then run tests and review any new hardware/rates. Results assume 730 hours/month, before other operating costs; measured capacity is not a demand forecast. Source links, benchmark dates and price dates are in the dashboard’s **Assumptions & sources**.
 
-## Explorer: every catalog model on every GPU
+## Every catalog model: estimates
 
-[`/explorer`](https://tokenomics-one-delta.vercel.app/explorer) puts every priced model from the public catalogs on a set of GPUs and draws:
+The model picker lists the models SemiAnalysis measured, then **every other model in the [Experiential catalog](https://api.experientiallabs.ai/api/models)** as an estimate. A measured model also gets estimates on GPUs SemiAnalysis did not run. Estimates are labelled on the page and in every API row (`kind: "estimate"`).
 
-- break-even utilization for every model, one line per GPU;
-- one model's monthly profit against GPU price and against utilization, one line per GPU;
-- a sortable table of profit and break-even utilization per model and GPU.
+How an estimate is made ([`private/estimate.mjs`](private/estimate.mjs)):
 
-Catalogs (pick any in `catalog.sources`):
+- Fit `log(total tokens/sec/GPU) = level[GPU] + slope x log(input + output $/M)` on the best AgentX point per model and GPU (meeting 50 tok/s/user), priced from our catalog. The slope is shared; each GPU has its own level.
+- Current fit: slope about -0.95 over 39 points; within a GPU it explains about 40% of the variation, and a typical estimate is off by about 2.6x. Market price is a rough proxy for serving cost, nothing more.
+- A measured model on an unmeasured GPU keeps its own measured speed relative to the GPU levels, instead of the price fit.
+- Input/output mix and cache share are the medians of the measured models on that GPU. Rental defaults are the same sourced rates as the measured entries.
+- Embeddings and image/audio models are skipped. Closed models are estimated as if self-hostable; they are not.
 
-| Source | API | Prices |
-|---|---|---|
-| `experiential` | `https://api.experientiallabs.ai/api/models` | Platform-funded lanes, in serving order (`lane: "lead"` is what Experiential charges) |
-| `huggingface` | `https://router.huggingface.co/v1/models` | Hugging Face Inference Providers, open weights only |
-| `openrouter` | `https://openrouter.ai/api/v1/models` | OpenRouter list price; open weights when it links a Hub repo |
+`GET /api/estimates` returns the fit and the catalog the page uses.
 
-Throughput, cache hit rate and GPU prices are **generic placeholders**, not measurements. Everything lives in one JSON scenario, [`private/default-scenario.json`](private/default-scenario.json):
+## Reports from JSON
 
-- `workload`: input and output tokens/sec per GPU at throughput multiplier 1, plus cache hit rate.
-- `gpus`: id, name, `$/GPU-hour`, and a throughput multiplier. Patch one with a map: `{"gpus":{"h100":{"hourlyRate":1.5}}}`; `null` removes a GPU.
+The same numbers (measured, else estimated) drive a JSON report over every catalog model and GPU. A scenario is a partial JSON deep-merged over [`private/default-scenario.json`](private/default-scenario.json) (`null` deletes a key):
+
 - `fleet`: GPU count, hours per month, paid utilization, other monthly cost, fee rate.
-- `models`: per-model overrides keyed by `source:slug` (or bare slug): prices, throughput, GPU count, and per-GPU measured numbers under `gpus`. See [`scenarios/measured-b300.json`](scenarios/measured-b300.json).
-- `catalog`: sources, price lane (`lead`, `cheapest`, `max`), `include`/`exclude` slug patterns (`*` wildcard), `openWeightsOnly`.
-- `sweep`: GPU price and utilization ranges for the curves.
-
-Every input is a partial scenario deep-merged over the defaults, so the same JSON drives all three entry points:
+- `gpus`: restrict to some AgentX GPUs and override rates, e.g. `{"gpus":{"h100":{"hourlyRate":2}}}`. Empty means every AgentX GPU at its sourced rate.
+- `models`: per slug, override `input`/`cached`/`output` prices or pin your own throughput per GPU under `gpus` (`kind: "pinned"`). See [`scenarios/pin-glm-5.3-b300.json`](scenarios/pin-glm-5.3-b300.json).
+- `catalog`: `sources` (`experiential`, `huggingface`, `openrouter`), `include`/`exclude` slug patterns, `openWeightsOnly`.
+- `sweep`: GPU price and utilization ranges for `?curves=1`.
 
 ```sh
-# HTTP API (JSON; add ?format=csv for a spreadsheet, ?curves=1 for the curve data)
-curl -s -X POST https://tokenomics-one-delta.vercel.app/api/report \
-  -H 'content-type: application/json' -d '{"gpus":{"h100":{"hourlyRate":1.5}},"fleet":{"utilization":0.3}}'
-curl -s https://tokenomics-one-delta.vercel.app/api/scenario   # defaults
-curl -s 'https://tokenomics-one-delta.vercel.app/api/catalog?sources=experiential,huggingface'
-
-# CLI (files merge left to right)
-node report.mjs scenarios/measured-b300.json scenarios/cheap-hopper-busy.json --csv > report.csv
+curl -s -X POST 'https://tokenomics-one-delta.vercel.app/api/report?format=csv' \
+  -H 'content-type: application/json' -d '{"gpus":{"h100":{"hourlyRate":2}},"fleet":{"utilization":0.3}}'
+curl -s https://tokenomics-one-delta.vercel.app/api/scenario      # defaults
+node report.mjs scenarios/cheap-hopper-busy.json --csv > report.csv   # files merge left to right
 ```
-
-The explorer's JSON editor takes the same patch, and **Copy link** / **Copy API call** reproduce a view exactly.
-
-**Open in the benchmark heatmap** (under the selected model in the explorer) opens the original dashboard on that catalog model and GPU with the current scenario: `/?catalog=<source:slug>&gpu=<id>#s=<scenario>`. The heatmap is unchanged; the model is one extra picker entry served by `GET /api/heatmap-model?id=<source:slug>&gpu=<id>&scenario=<json>`, labelled as generic throughput unless the scenario pins measured numbers for that GPU.
 
 ## Run locally
 
